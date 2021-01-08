@@ -234,11 +234,11 @@ impl Api {
             .term)
     }
 
-    pub async fn modules(&self, current_term_only: bool) -> Result<Vec<Module>> {
-        let current_term = if current_term_only {
-            Some(self.current_term().await?)
+    pub async fn modules(&self, term: Option<String>) -> Result<Vec<Module>> {
+        let current_term = if term.is_some() {
+            term
         } else {
-            None
+            Some(self.current_term().await?)
         };
 
         let modules = self

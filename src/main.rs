@@ -280,6 +280,13 @@ async fn main() -> Result<()> {
                 .number_of_values(1)
                 .default_value("skip"),
         )
+        .arg(
+            Arg::with_name("term")
+                .long("term")
+                .takes_value(true)
+                .value_name("term")
+                .number_of_values(1),
+        )
         .get_matches();
     let credential_file = matches
         .value_of("credential-file")
@@ -317,6 +324,13 @@ async fn main() -> Result<()> {
             _ => panic!("Unable to parse parameter of overwrite_mode"),
         })
         .unwrap_or(OverwriteMode::Skip);
+    let specified_term = matches.value_of("term").map(|s| {
+        if s.len() == 4 && s.chars().all(char::is_numeric) {
+            s.to_owned()
+        } else {
+            panic!("Invalid input term")
+        }
+    });
 
     let (username, password) =
         get_credentials(&credential_file).expect("Unable to get credentials");
@@ -331,7 +345,7 @@ async fn main() -> Result<()> {
 
     let name = api.name().await?;
     println!("Hi {}!", name);
-    let modules = api.modules(true).await?;
+    let modules = api.modules(specified_term).await?;
     println!("You are taking:");
     for module in modules.iter().filter(|m| m.is_taking()) {
         println!("- {} {}", module.code, module.name);

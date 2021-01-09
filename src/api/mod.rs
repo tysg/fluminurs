@@ -235,7 +235,11 @@ impl Api {
     }
 
     pub async fn modules(&self, term: Option<String>) -> Result<Vec<Module>> {
-        let specified_term = term.unwrap_or(self.current_term().await?);
+        let specified_term = if term.is_some() {
+            term.unwrap()
+        } else {
+            self.current_term().await?
+        };
 
         let modules = self
             .api_as_json::<ApiData>("module", Method::GET, None)

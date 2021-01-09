@@ -235,25 +235,17 @@ impl Api {
     }
 
     pub async fn modules(&self, term: Option<String>) -> Result<Vec<Module>> {
-        let current_term = if term.is_some() {
-            term
-        } else {
-            Some(self.current_term().await?)
-        };
+        let specified_term = term.unwrap_or(self.current_term().await?);
 
         let modules = self
             .api_as_json::<ApiData>("module", Method::GET, None)
             .await?;
 
         if let Data::Modules(modules) = modules.data {
-            if let Some(current_term) = current_term {
-                Ok(modules
-                    .into_iter()
-                    .filter(|m| m.term == current_term)
-                    .collect())
-            } else {
-                Ok(modules)
-            }
+            Ok(modules
+                .into_iter()
+                .filter(|m| m.term == specified_term)
+                .collect())
         } else if let Data::Empty(_) = modules.data {
             Ok(vec![])
         } else {

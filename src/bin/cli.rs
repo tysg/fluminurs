@@ -64,17 +64,25 @@ fn print_files(file: &File, prefix: &str) {
 }
 
 async fn print_conferencing(api: &Api, modules: &[Module]) -> Result<()> {
+    // TODO: bad code
     let apic = api.clone();
 
     let zoom_meetings =
         future::join_all(modules.iter().map(|module| module.get_conferencing(&apic))).await;
     for (module, meetings) in modules.iter().zip(zoom_meetings) {
+        if !meetings.is_ok() {
+            continue
+        }
+
         let meetings = meetings?;
+        println!("# {} {}", module.code, module.name);
+
         if meetings.is_empty() {
+            println!("No meeting found.");
+            println!();
+            println!();
             continue;
         }
-        println!("# {} {}", module.code, module.name);
-        println!();
         for meeting in meetings {
             println!("=== {} ===", meeting.name);
             println!("Start: {}", meeting.start_time.format("%a %e %b %I:%M %P"));

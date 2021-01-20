@@ -7,7 +7,7 @@ use reqwest::{Client, RequestBuilder, Response, Url};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
-use self::module::{Announcement, Module};
+use self::module::{Announcement, Module, ZoomMeeting};
 
 pub mod module;
 
@@ -60,6 +60,7 @@ enum Data {
     Empty(Vec<[(); 0]>),
     Modules(Vec<Module>),
     Announcements(Vec<Announcement>),
+    Conferencing(Vec<ZoomMeeting>),
     ApiFileDirectory(Vec<ApiFileDirectory>),
     Text(String),
 }

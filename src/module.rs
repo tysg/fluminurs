@@ -27,6 +27,28 @@ struct Access {
     settings_update: bool,
 }
 
+mod response_datetime_deserializer {
+    use chrono::{DateTime, FixedOffset};
+    use serde::{de::Error, Deserialize, Deserializer};
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<DateTime<FixedOffset>, D::Error> {
+        let time: String = Deserialize::deserialize(deserializer)?;
+        Ok(DateTime::parse_from_rfc3339(&time).map_err(D::Error::custom)?)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ZoomMeeting {
+    pub name: String,
+    #[serde(rename = "joinUrl")]
+    pub join_url: String,
+    #[serde(rename = "startDate", with = "response_datetime_deserializer")]
+    pub start_time: chrono::DateTime<chrono::FixedOffset>,
+    #[serde(rename = "endDate", with = "response_datetime_deserializer")]
+    pub end_time: chrono::DateTime<chrono::FixedOffset>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Announcement {
     pub title: String,
@@ -76,6 +98,22 @@ impl Module {
         let api_data = api.api_as_json::<ApiData>(&path, Method::GET, None).await?;
         if let Data::Announcements(announcements) = api_data.data {
             Ok(announcements)
+        } else if let Data::Empty(_) = api_data.data {
+            Ok(vec![])
+        } else {
+            Err("Invalid API response from server: type mismatch")
+        }
+    }
+
+    pub async fn get_conferencing(&self, api: &Api) -> Result<Vec<ZoomMeeting>> {
+        let path = format!(
+            "zoom/Meeting/{}/Meetings?where=endDate >= \"{}\"&limit=3&offset=0&sortby=startDate asc&populate=null",
+            self.id,
+            chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+        );
+        let api_data = api.api_as_json::<ApiData>(&path, Method::GET, None).await?;
+        if let Data::Conferencing(meetings) = api_data.data {
+            Ok(meetings)
         } else if let Data::Empty(_) = api_data.data {
             Ok(vec![])
         } else {

@@ -53,6 +53,40 @@ fn get_password(prompt: &str) -> String {
     rpassword::read_password().expect("Unable to get non-echo input mode for password")
 }
 
+fn print_files(file: &File, prefix: &str) {
+    if file.is_directory() {
+        for child in file.children().expect("Children must have been loaded") {
+            print_files(&child, &format!("{}/{}", prefix, file.name()));
+        }
+    } else {
+        println!("{}/{}", prefix, file.name());
+    }
+}
+
+async fn print_conferencing(api: &Api, modules: &[Module]) -> Result<()> {
+    let apic = api.clone();
+
+    let zoom_meetings =
+        future::join_all(modules.iter().map(|module| module.get_conferencing(&apic))).await;
+    for (module, meetings) in modules.iter().zip(zoom_meetings) {
+        let meetings = meetings?;
+        if meetings.is_empty() {
+            continue;
+        }
+        println!("# {} {}", module.code, module.name);
+        println!();
+        for meeting in meetings {
+            println!("=== {} ===", meeting.name);
+            println!("Start: {}", meeting.start_time.format("%a %e %b %I:%M %P"));
+            println!("End: {}", meeting.end_time.format("%a %e %b %I:%M %P"));
+            println!("{}", meeting.join_url);
+        }
+        println!();
+        println!();
+    }
+    Ok(())
+}
+
 async fn print_announcements(api: &Api, modules: &[Module]) -> Result<()> {
     let module_announcements = future::join_all(
         modules
@@ -239,6 +273,7 @@ async fn main() -> Result<()> {
         .about(DESCRIPTION)
         .arg(Arg::with_name("announcements").long("announcements"))
         .arg(Arg::with_name("files").long("files"))
+        .arg(Arg::with_name("conferencing").long("conferencing"))
         .arg(
             Arg::with_name("download")
                 .long("download-to")
@@ -280,6 +315,7 @@ async fn main() -> Result<()> {
         .to_owned();
     let do_announcements = matches.is_present("announcements");
     let do_files = matches.is_present("files");
+    let do_conferencing = matches.is_present("conferencing");
     let download_destination = matches.value_of("download").map(|s| s.to_owned());
     let include_uploadable_folders = matches
         .values_of("include-uploadable")
@@ -343,6 +379,10 @@ async fn main() -> Result<()> {
 
     if do_announcements {
         print_announcements(&api, &modules).await?;
+    }
+
+    if do_conferencing {
+        print_conferencing(&api, &modules).await?;
     }
 
     if do_files || download_destination.is_some() {

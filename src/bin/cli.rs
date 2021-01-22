@@ -53,16 +53,6 @@ fn get_password(prompt: &str) -> String {
     rpassword::read_password().expect("Unable to get non-echo input mode for password")
 }
 
-fn print_files(file: &File, prefix: &str) {
-    if file.is_directory() {
-        for child in file.children().expect("Children must have been loaded") {
-            print_files(&child, &format!("{}/{}", prefix, file.name()));
-        }
-    } else {
-        println!("{}/{}", prefix, file.name());
-    }
-}
-
 async fn print_conferencing(api: &Api, modules: &[Module]) -> Result<()> {
     // TODO: bad code
     let apic = api.clone();
@@ -71,7 +61,7 @@ async fn print_conferencing(api: &Api, modules: &[Module]) -> Result<()> {
         future::join_all(modules.iter().map(|module| module.get_conferencing(&apic))).await;
     for (module, meetings) in modules.iter().zip(zoom_meetings) {
         if !meetings.is_ok() {
-            continue
+            continue;
         }
 
         let meetings = meetings?;
